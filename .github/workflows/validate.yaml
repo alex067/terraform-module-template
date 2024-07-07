@@ -1,0 +1,103 @@
+name: "Terraform Module Validate"
+
+# Only run during lifecycle of a PR
+on:
+  pull_request:
+    types: 
+      - opened 
+      - reopened 
+      - synchronize
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+env:
+  TERRAFORM_VERSION: 1.6
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Generate terraform documentation
+        uses: terraform-docs/gh-actions@main
+        with:
+          working-dir: .
+          output-file: README.md
+          output-method: inject
+          git-push: "true"
+          recursive: true
+          recursive-path: examples
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Cache plugin dir 
+        uses: actions/cache@v3
+        with:
+          path: ~/.tflint.d/plugins
+          key: ubuntu-latest-tflint-${{ hashFiles('.tflint.hcl') }}
+      
+      - name: Setup TFLint 
+        uses: terraform-linters/setup-tflint@v3.1.0
+        with:
+          tflint_version: v0.47.0
+    
+      - name: Run TFLint
+        id: lint
+        run: tflint --recursive --no-color
+  
+      - name: Terraform Init  
+        if: always()
+        id: init
+        run: terraform init 
+
+      - name: Terraform Validate
+        if: always()
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Fmt 
+        if: always()
+        id: fmt 
+        run: terraform fmt -check --recursive
+    
+      - name: Update PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Terraform Linting: \`${{ steps.lint.outcome }}\`
+            #### Terraform Format: \`${{ steps.fmt.outcome }}\` 
+            #### Terraform Initialization: \`${{ steps.init.outcome }}\`
+            #### Terraform Validation: \`${{ steps.validate.outcome }}\`
+  
+            *Pushed by: @${{ github.actor }}*`;
+  
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
