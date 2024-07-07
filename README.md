@@ -4,7 +4,8 @@ Repository template for creating new Terraform modules.
 Provides the following features for module reliability:
 * Linting with `tflint` to enforce general best practices
 * Generate README.md with `terraform-docs`
-* Github actions to build, version, and package module 
+* Github actions to build, version, and package module
+* Semantic versioning provided with [github-tag-action](https://github.com/anothrNick/github-tag-action)
 * Github actions for testing and validating changes
 * Base filenames adhere to general best practices
 
