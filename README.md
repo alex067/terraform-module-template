@@ -24,6 +24,7 @@ Recommendations for new modules:
 Fork the repository and enable it as a repository template under `Settings`.
 
 `terraform-docs` requires a custom PAT so README.md changes to the pull request do not block other checks. See the open issue: [#107](https://github.com/terraform-docs/gh-actions/issues/107)
+
 <!-- BEGIN_TF_DOCS -->
 {{ .Content }}
 <!-- END_TF_DOCS -->
